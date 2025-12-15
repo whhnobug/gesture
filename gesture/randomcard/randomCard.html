@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 星云祝愿 (完美版)</title>
+    <!-- 引入艺术字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Noto Serif SC', serif; }
+        
+        #input-video { display: none; }
+        
+        /* 背景：深空渐变 */
+        #canvas-container { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+            background: radial-gradient(circle at center, #111520 0%, #000000 100%);
+        }
+
+        /* --- 顶部标题 --- */
+        #top-header {
+            position: fixed; top: 30px; left: 0; width: 100%;
+            text-align: center; z-index: 10;
+            pointer-events: none;
+            opacity: 0; animation: fadeIn 2s ease forwards 0.5s;
+        }
+        
+        .header-text {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 3.5rem;
+            /* 炫彩流光渐变 */
+            background: linear-gradient(to right, #ffd700, #ff0055, #00f3ff, #ffd700);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.4));
+            animation: shine 5s linear infinite;
+        }
+
+        @keyframes shine { to { background-position: 200% center; } }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* --- 加载层 --- */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.8s ease;
+        }
+        .loader {
+            width: 40px; height: 40px; border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: #00f3ff; border-radius: 50%;
+            animation: spin 1s infinite linear; margin-bottom: 20px;
+        }
+        .loading-text { color: #00f3ff; font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; }
+        .skip-btn {
+            padding: 8px 20px; border: 1px solid #333; color: #666; background: transparent;
+            border-radius: 20px; cursor: pointer; font-size: 12px; margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .skip-btn:hover { border-color: #fff; color: #fff; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- 主卡片 --- */
+        #card-stage {
+            position: fixed; top: 50%; left: 50%;
+            width: 380px; height: 620px;
+            transform: translate(-50%, -50%) perspective(1500px) rotateY(90deg) scale(0.6);
+            transform-style: preserve-3d;
+            z-index: 20; opacity: 0; pointer-events: none;
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s;
+        }
+        #card-stage.active {
+            opacity: 1; pointer-events: auto;
+            transform: translate(-50%, -50%) perspective(1500px) rotateY(0deg) scale(1);
+        }
+        .glass-card {
+            width: 100%; height: 100%; border-radius: 24px;
+            background: rgba(20, 25, 40, 0.8);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; color: #fff; 
+            /* 调整内边距，给文字更多横向空间 */
+            padding: 40px 10px; 
+            box-sizing: border-box;
+            position: relative; overflow: hidden;
+        }
+        .glass-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, transparent, #00f3ff, transparent);
+            box-shadow: 0 0 20px #00f3ff;
+        }
+        .big-word {
+            font-family: 'Ma Shan Zheng', cursive; 
+            /* 修改这里：调整字号并强制不换行 */
+            font-size: 4.2rem; 
+            white-space: nowrap; 
+            margin: 30px 0;
+            background: linear-gradient(to bottom, #fff, #8beeff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(0, 243, 255, 0.4));
+        }
+        .big-desc { font-size: 1.2rem; color: #ddd; line-height: 1.8; font-weight: 300; padding: 0 20px; }
+        
+        /* 底部提示 */
+        #hud {
+            position: fixed; bottom: 30px; width: 100%; text-align: center;
+            color: rgba(255,255,255,0.4); font-size: 13px; letter-spacing: 2px;
+            z-index: 10; pointer-events: none;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .header-text { font-size: 2.2rem; }
+            #card-stage { width: 300px; height: 500px; }
+            .big-word { font-size: 3.5rem; }
+            #hud { font-size: 12px; width: 90%; left: 5%; }
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div class="loading-text" id="load-txt">正在装载2026年好运...</div>
+        <div class="loading-text" style="font-size: 12px; color: #666;" id="sub-txt">如果卡住，请检查摄像头权限</div>
+        <button class="skip-btn" onclick="forceStart()">跳过视觉识别（仅点击模式）</button>
+    </div>
+
+    <!-- 顶部标题 -->
+    <div id="top-header">
+        <div class="header-text"> 2026祝您：</div>
+    </div>
+
+    <video id="input-video"></video>
+    <div id="canvas-container"></div>
+
+    <div id="card-stage">
+        <div class="glass-card">
+            <div style="font-size:12px; color:#ffd700; letter-spacing:4px; opacity:0.8;">BEST WISHES</div>
+            <div class="big-word" id="ui-word"></div>
+            <div style="width:50px; height:1px; background:rgba(255,255,255,0.3); margin: 0 auto 30px;"></div>
+            <div class="big-desc" id="ui-desc"></div>
+        </div>
+    </div>
+
+    <div id="hud">🖐️ 五指张开 / 🖱️ 点击空白处：转动 · ✊ 握拳 / 🖱️ 点击卡片：抽取</div>
+
+<script>
+    // 1. 数据
+    const moodData = [
+        { "w": "春风化雨", "d": "愿温柔如你，润物无声，也被世界温柔以待。" },
+  { "w": "心怀星辰", "d": "即使身处黑夜，也别忘了你心中有光。" },
+  { "w": "步履不停", "d": "只要还在走，就离梦想更近一步。" },
+  { "w": "笑靥如花", "d": "你的笑容，是这世上最动人的风景。" },
+  { "w": "自在如风", "d": "不被定义，不被束缚，做最自由的自己。" },
+  { "w": "静待花开", "d": "有些美好，需要时间慢慢酝酿。" },
+  { "w": "山高水长", "d": "情谊不因距离而淡，时光不因岁月而老。" },
+  { "w": "云淡风轻", "d": "看淡得失，才能活得轻松。" },
+  { "w": "心有所向", "d": "方向对了，就不怕路远。" },
+  { "w": "熠熠生辉", "d": "你本就光芒万丈，无需借谁的光。" },
+  { "w": "顺遂无忧", "d": "愿你所行皆坦途，所愿皆可期。" },
+  { "w": "温柔坚定", "d": "柔软的心，也能扛起整个世界的重量。" },
+  { "w": "不负韶华", "d": "青春短暂，但每一刻都值得全力以赴。" },
+  { "w": "心安即是归处", "d": "无论身在何方，内心安宁便是家。" },
+  { "w": "柳暗花明", "d": "转角之处，总有惊喜在等你。" },
+  { "w": "乘风破浪", "d": "无惧风浪，你就是自己的船长。" },
+  { "w": "清风朗月", "d": "愿你心中常有明月，眼中有清风。" },
+  { "w": "厚德载物", "d": "善良与包容，是最强大的力量。" },
+  { "w": "锦上添花", "d": "愿你在幸福之上，再添更多欢喜。" },
+  { "w": "海阔天空", "d": "心有多大，世界就有多宽广。" },
+  { "w": "心花怒放", "d": "愿每一天，都有让你开心的理由。" },
+  { "w": "安然无恙", "d": "平平安安，就是最好的祝福。" },
+  { "w": "朝气蓬勃", "d": "年轻不是年龄，是永远向上的姿态。" },
+  { "w": "落花流水", "d": "顺其自然，也是一种智慧。" },
+  { "w": "晴空万里", "d": "阴霾终会散去，阳光总会回来。" },
+  { "w": "福星高照", "d": "好运正在悄悄向你靠近。" },
+  { "w": "心静自然凉", "d": "浮躁时，不妨深呼吸，找回内心的平静。" },
+  { "w": "一往无前", "d": "认准了路，就别回头。" },
+  { "w": "岁月静好", "d": "愿你在平凡的日子里，找到不平凡的快乐。" },
+  { "w": "四海升平", "d": "世界和平，人间安宁，是你我共同的期盼。" },
+  { "w": "金玉满堂", "d": "富足不仅是财富，更是内心的丰盈。" },
+  { "w": "心想事顺", "d": "心之所向，步步生莲。" },
+  { "w": "和光同尘", "d": "低调谦和，却自有光芒。" },
+  { "w": "甘之如饴", "d": "苦中作乐，是最高级的浪漫。" },
+  { "w": "悠然自得", "d": "慢下来，才能看见生活的美。" },
+  { "w": "鸿运当头", "d": "属于你的幸运，正在路上。" },
+  { "w": "温润如玉", "d": "柔和却不失力量，是你最美的样子。" },
+  { "w": "披星戴月", "d": "为梦想奔波的日子，终将照亮未来。" },
+  { "w": "春暖花开", "d": "寒冬已过，万物复苏，希望就在前方。" },
+  { "w": "心怀感恩", "d": "懂得感恩的人，更容易被幸福眷顾。" },
+  { "w": "扶摇直上", "d": "积蓄已久的力量，终将带你飞向高处。" },
+  { "w": "吉星高照", "d": "天道酬勤，好运常伴努力的人。" },
+  { "w": "怡然自乐", "d": "一个人也能活成一支队伍，快乐由心而生。" },
+  { "w": "锦绣前程", "d": "你的未来，比想象中更灿烂。" },
+  { "w": "风和日丽", "d": "好天气配好心情，愿你天天如此。" },
+  { "w": "心旷神怡", "d": "放下烦恼，让心灵去旅行。" },
+  { "w": "福慧双修", "d": "既有福气，也有智慧，人生圆满。" },
+  { "w": "笑口常开", "d": "笑容是最好的化妆品，也是最强的治愈力。" },
+  { "w": "否极泰来", "d": "低谷之后，必有回升。" },
+  { "w": "龙马精神", "d": "活力满满，干劲十足，迎接每一个挑战。" },
+  { "w": "安居乐业", "d": "有家可归，有梦可追，便是人间理想。" },
+  { "w": "心满意足", "d": "知足者常乐，惜福者常安。" },
+  { "w": "鹏程万里", "d": "志存高远，终将翱翔九天。" },
+  { "w": "瑞雪兆丰年", "d": "今日的积累，是明日的丰收。" },
+  { "w": "喜气洋洋", "d": "愿喜悦如春风，吹进你生活的每个角落。" },
+  { "w": "心平气和", "d": "情绪稳定，是成年人最顶级的自律。" },
+  { "w": "蒸蒸日上", "d": "事业、生活、心情，一天比一天更好。" },
+  { "w": "吉祥如意", "d": "所求皆如愿，所行化坦途。" },
+  { "w": "宁静致远", "d": "沉得住气，才能走得更远。" },
+  { "w": "花开富贵", "d": "愿你的生活如繁花般绚烂多彩。" },
+  { "w": "一帆风顺", "d": "前路虽远，但风正助你扬帆。" },
+  { "w": "心怀梦想", "d": "有梦的人，永远不会迷失方向。" },
+  { "w": "福寿安康", "d": "健康是福，平安是寿，愿你二者兼得。" },
+  { "w": "乐善好施", "d": "善良是种子，终将开出幸福的花。" },
+  { "w": "豁达开朗", "d": "心宽一寸，路宽一丈。" },
+  { "w": "天道酬勤", "d": "你付出的每一分努力，都不会被辜负。" },
+  { "w": "心随所愿", "d": "愿你心之所向，皆能抵达。" },
+  { "w": "五福临门", "d": "福、禄、寿、喜、财，样样不缺。" },
+  { "w": "从容不迫", "d": "不慌不忙，才是应对生活的最好姿态。" },
+  { "w": "心有所依", "d": "有人牵挂，有爱可依，便是人间值得。" },
+  { "w": "万象更新", "d": "新的一年，新的开始，一切都会更好。" },
+  { "w": "春风得意", "d": "好事连连，心情舒畅，正是人生好时节。" },
+  { "w": "心怀暖阳", "d": "即使在寒冬，也能温暖自己和他人。" },
+  { "w": "青云直上", "d": "才华与努力，终将带你登上高峰。" },
+  { "w": "家和万事兴", "d": "和睦的家庭，是幸福的源泉。" },
+  { "w": "心怀善意", "d": "善良是你最美的底色。" },
+  { "w": "日进斗金", "d": "财富源源不断，生活越来越富足。" },
+  { "w": "心怀热爱", "d": "因为热爱，所以坚持；因为坚持，所以闪耀。" },
+  { "w": "岁岁平安", "d": "年年有今日，岁岁皆欢愉。" },
+  { "w": "心怀希望", "d": "只要还有希望，就永远有明天。" },
+  { "w": "风生水起", "d": "事业如潮涌，生活似花开。" },
+  { "w": "心怀赤诚", "d": "真诚待人，终将收获真心。" },
+  { "w": "福泽绵长", "d": "福气如江河，绵延不绝。" },
+  { "w": "心怀勇气", "d": "勇敢不是不害怕，而是带着害怕依然前行。" },
+  { "w": "花开满园", "d": "愿你的努力，结出满园芬芳。" },
+  { "w": "心怀自由", "d": "灵魂自由，脚步才不会被束缚。" },
+  { "w": "顺心如意", "d": "事事称心，时时欢喜。" },
+  { "w": "心怀诗意", "d": "在平凡中看见美，是生活的艺术。" },
+  { "w": "福气满满", "d": "好运常伴，喜事连连。" },
+  { "w": "心怀远方", "d": "目光所及是远方，脚下所行是征途。" },
+  { "w": "喜乐安康", "d": "快乐常在，身体康健，胜过千金。" },
+  { "w": "心怀光明", "d": "黑暗再长，也挡不住你心中的光。" },
+  { "w": "诸事顺遂", "d": "工作顺利，生活如意，心情舒畅。" },
+  { "w": "心怀柔情", "d": "刚强之中不失温柔，是最动人的力量。" },
+  { "w": "福如东海", "d": "福气浩瀚如海，绵延不绝。" },
+  { "w": "心怀敬畏", "d": "敬天爱人，方能行稳致远。" },
+  { "w": "寿比南山", "d": "健康长寿，福寿双全。" },
+  { "w": "心怀纯粹", "d": "保持初心，不染尘埃，是最珍贵的品质。" },
+  { "w": "幸福安康", "d": "幸福很简单：有人爱，有事做，有期待。" },
+  { "w": "心怀辽阔", "d": "心若大海，便容得下所有风雨。" },
+  { "w": "喜从天降", "d": "惊喜总在不经意间降临。" },
+  { "w": "心怀坚定", "d": "信念如磐石，风雨不动摇。" },
+  { "w": "福至心灵", "d": "好运来了，灵感也会随之而来。" },
+  { "w": "心怀感恩", "d": "感恩拥有，珍惜当下，幸福自来。" },
+  { "w": "万事如意", "d": "愿你所求皆所得，所行化坦途。" }
+    ];
+    while(moodData.length < 100) {
+        moodData.push(moodData[Math.floor(Math.random()*moodData.length)]);
+    }
+
+    // 2. Three.js
+    let scene, camera, renderer;
+    let sphereGroup, cardMeshes = [];
+    let meteorSystem; 
+
+    function initThree() {
+        const container = document.getElementById('canvas-container');
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0e1520, 0.012);
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 60; 
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // A. 真言星球
+        sphereGroup = new THREE.Group();
+        scene.add(sphereGroup);
+
+        const core = new THREE.Mesh(
+            new THREE.SphereGeometry(15, 32, 32),
+            new THREE.MeshBasicMaterial({ color: 0x001133, transparent: true, opacity: 0.6 })
+        );
+        sphereGroup.add(core);
+
+        const cardGeo = new THREE.PlaneGeometry(3.5, 5.0); 
+        const radius = 30; 
+        const phi = Math.PI * (3 - Math.sqrt(5)); 
+
+        moodData.forEach((item, i) => {
+            const texture = createCardTexture(item.w, item.d, i);
+            const mat = new THREE.MeshBasicMaterial({
+                map: texture, transparent: true, side: THREE.DoubleSide,
+                depthWrite: false, blending: THREE.AdditiveBlending 
+            });
+            const mesh = new THREE.Mesh(cardGeo, mat);
+
+            const y = 1 - (i / (moodData.length - 1)) * 2;
+            const r = Math.sqrt(1 - y * y);
+            const theta = phi * i;
+            const x = Math.cos(theta) * r;
+            const z = Math.sin(theta) * r;
+
+            const pos = new THREE.Vector3(x * radius, y * radius, z * radius);
+            mesh.position.copy(pos);
+            mesh.lookAt(mesh.position.clone().multiplyScalar(2)); 
+            
+            mesh.userData = { originalPos: pos.clone() };
+            sphereGroup.add(mesh);
+            cardMeshes.push(mesh);
+        });
+
+        // B. 五彩流星雨
+        const meteorCount = 200;
+        const meteorGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(meteorCount * 6); 
+        const colors = new Float32Array(meteorCount * 6);
+        const meteorData = []; 
+        const palette = [new THREE.Color(0xffd700), new THREE.Color(0x00f3ff), new THREE.Color(0xff0055), new THREE.Color(0xbc13fe)];
+
+        for(let i=0; i<meteorCount; i++) {
+            const x = (Math.random() - 0.5) * 500;
+            const y = (Math.random() - 0.5) * 500;
+            const z = (Math.random() - 0.5) * 600 - 100; 
+            const len = 20 + Math.random() * 30; 
+
+            positions[i*6] = x; positions[i*6+1] = y; positions[i*6+2] = z;
+            positions[i*6+3] = x; positions[i*6+4] = y; positions[i*6+5] = z - len;
+
+            const col = palette[Math.floor(Math.random() * palette.length)];
+            colors[i*6] = col.r; colors[i*6+1] = col.g; colors[i*6+2] = col.b;
+            colors[i*6+3] = col.r * 0.5; colors[i*6+4] = col.g * 0.5; colors[i*6+5] = col.b * 0.5;
+
+            meteorData.push({ speed: 1 + Math.random() * 2, len: len });
+        }
+
+        meteorGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        meteorGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const meteorMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+        meteorSystem = new THREE.LineSegments(meteorGeo, meteorMat);
+        meteorSystem.userData = { data: meteorData };
+        scene.add(meteorSystem);
+    }
+
+    function createCardTexture(word, desc, index) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 360; 
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0,0,0,360);
+        grad.addColorStop(0, 'rgba(0, 30, 60, 0.5)');
+        grad.addColorStop(1, 'rgba(0, 10, 20, 0.2)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,256,360);
+        ctx.strokeStyle = `hsl(${Math.random()*360}, 70%, 60%)`; 
+        ctx.lineWidth = 5;
+        ctx.strokeRect(5,5,246,350);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 50px "Microsoft YaHei"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowBlur = 15;
+        ctx.fillText(word, 128, 140);
+        const shortDesc = desc.length > 9 ? desc.substring(0,8) + ".." : desc;
+        ctx.font = '20px "Microsoft YaHei"';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ddeeff';
+        ctx.fillText(shortDesc, 128, 220);
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    // 3. 交互逻辑
+    const STATE = { IDLE: 0, SHOWING: 1, DISMISSING: 2 };
+    let currentState = STATE.IDLE;
+    let sphereRadiusExtra = 0;
+    const uiStage = document.getElementById('card-stage');
+    const uiWord = document.getElementById('ui-word');
+    const uiDesc = document.getElementById('ui-desc');
+
+    function actionDraw() {
+        if(currentState !== STATE.IDLE) return;
+        const item = moodData[Math.floor(Math.random()*moodData.length)];
+        uiWord.innerText = item.w;
+        uiDesc.innerText = item.d;
+        currentState = STATE.SHOWING;
+        uiStage.classList.add('active');
+        sphereRadiusExtra = 40; 
+    }
+
+    function actionDismiss() {
+        if(currentState !== STATE.SHOWING) return;
+        currentState = STATE.DISMISSING;
+        uiStage.classList.remove('active');
+        setTimeout(() => currentState = STATE.IDLE, 1000);
+    }
+
+    // 点击交互 (Fallback)
+    document.addEventListener('click', (e) => {
+        if(document.getElementById('loading-screen').style.display !== 'none') return;
+        
+        if(currentState === STATE.IDLE) {
+            actionDraw();
+        } else if (currentState === STATE.SHOWING) {
+            actionDismiss();
+        }
+    });
+
+    // 4. MediaPipe & 启动控制
+    let handsInstance = null;
+    let cameraInstance = null;
+    
+    // 强制开始 (跳过等待)
+    window.forceStart = function() {
+        const loadDiv = document.getElementById('loading-screen');
+        loadDiv.style.opacity = '0';
+        setTimeout(() => loadDiv.style.display = 'none', 800);
+        document.getElementById('hud').innerText = "🖱️ 点击屏幕任意位置进行抽卡";
+    }
+
+    async function startVision() {
+        const loadTxt = document.getElementById('load-txt');
+        const subTxt = document.getElementById('sub-txt');
+
+        // 设置5秒超时，如果加载卡住，自动进入点击模式
+        const timeoutId = setTimeout(() => {
+            if(document.getElementById('loading-screen').style.display !== 'none') {
+                console.log("Vision load timed out, enabling mouse mode.");
+                forceStart();
+            }
+        }, 5000);
+
+        try {
+            loadTxt.innerText = "正在链接视觉神经...";
+            handsInstance = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+            handsInstance.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6 });
+
+            let cooldown = 0;
+            handsInstance.onResults(results => {
+                // 成功检测到画面
+                clearTimeout(timeoutId); 
+                const loadDiv = document.getElementById('loading-screen');
+                if(loadDiv.style.opacity !== '0') {
+                    loadDiv.style.opacity = '0';
+                    setTimeout(() => loadDiv.style.display='none', 800);
+                }
+
+                if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const lm = results.multiHandLandmarks[0];
+                    const tips=[8,12,16,20], pips=[6,10,14,18];
+                    let f = 0;
+                    tips.forEach((t,i) => { if(lm[t].y < lm[pips[i]].y) f++; });
+                    if(lm[4].x < lm[3].x) f++; 
+
+                    if(cooldown > 0) { cooldown--; return; }
+                    if(f <= 1 && currentState === STATE.IDLE) { actionDraw(); cooldown = 40; }
+                    else if(f >= 4 && currentState === STATE.SHOWING) { actionDismiss(); cooldown = 40; }
+                }
+            });
+
+            const vid = document.getElementById('input-video');
+            cameraInstance = new Camera(vid, { 
+                onFrame: async()=>{ await handsInstance.send({image:vid}) }, 
+                width:640, height:480 
+            });
+            await cameraInstance.start();
+        } catch(e) {
+            console.error(e);
+            loadTxt.innerText = "无法启动摄像头";
+            subTxt.innerText = "已自动切换为点击模式";
+            subTxt.style.color = "#ffd700";
+            setTimeout(forceStart, 1500);
+        }
+    }
+
+    // 5. 动画循环
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+        const time = clock.getElapsedTime();
+
+        // 星球动画
+        sphereGroup.rotation.y += 0.002;
+        sphereGroup.rotation.x = Math.sin(time * 0.2) * 0.05;
+        const targetR = (currentState === STATE.SHOWING) ? 30 : 0;
+        sphereRadiusExtra += (targetR - sphereRadiusExtra) * 0.05;
+
+        cardMeshes.forEach((mesh, i) => {
+            const ud = mesh.userData;
+            const dir = ud.originalPos.clone().normalize();
+            const dist = ud.originalPos.length() + sphereRadiusExtra + Math.sin(time*2 + i)*0.5;
+            mesh.position.copy(dir.multiplyScalar(dist));
+            mesh.lookAt(mesh.position.clone().multiplyScalar(2)); 
+        });
+
+        // 流星动画
+        if(meteorSystem) {
+            const positions = meteorSystem.geometry.attributes.position.array;
+            const data = meteorSystem.userData.data;
+            for(let i=0; i<data.length; i++) {
+                const speed = data[i].speed * (currentState === STATE.SHOWING ? 4 : 0.5); 
+                positions[i*6+2] += speed; positions[i*6+5] += speed;
+                if(positions[i*6+2] > 80) {
+                    const zReset = -200 - Math.random() * 100;
+                    const xReset = (Math.random() - 0.5) * 500;
+                    const yReset = (Math.random() - 0.5) * 500;
+                    positions[i*6] = xReset; positions[i*6+1] = yReset; positions[i*6+2] = zReset;
+                    positions[i*6+3] = xReset; positions[i*6+4] = yReset; positions[i*6+5] = zReset - data[i].len;
+                }
+            }
+            meteorSystem.geometry.attributes.position.needsUpdate = true;
+        }
+        renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+        if(!window.THREE) { alert("资源加载失败，请检查网络"); return; }
+        initThree();
+        animate();
+        startVision();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth,window.innerHeight);
+        });
+    };
+</script>
+</body>
+</html>
