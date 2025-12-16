@@ -1,0 +1,50 @@
+写在前面:
+  提示词只能给你实现大体框架,也不是100%契合你的想法,如要逐步调整修改,下面这9步是我实现宠物对战的所有步骤
+  图片我是用豆包生成的,并不是gemini3生成的
+
+step1:
+  create a webapp using vanilla js,html,css,modern threejs,mediapipe.如果mediapipe来自CDN,要用常规的<script>方式引入变量。
+  帮我做一个宠物对战的游戏系统:
+  宠物数据读取同文件夹下data.txt文件中的数据,宠物数据为pet:[{name:xx1,avatar:(相对路径图片地址),bloodVolume:100,describe:xxx,skillList:[{order:1,name:1号技能,attack:10,color:blue,shape:laser}]},{name:xx2,avatar:(相对路径图片地址),bloodVolume:100,describe:xxx,skillList:[{order:1,name:1号技能,attack:10,color:blue,shape:laser}]}]
+  敌人数据读取同文件夹下data.txt文件中的数据,敌人数据为:enemy,数据格式和宠物的数据格式一样
+  进入系统首先选择我方出战宠物,通过卡片形式将所有宠物罗列出来,通过摄像头读取用户手势选择宠物(从1到5),随后做一个抽卡动画随机选择敌对宠物
+  我方宠物置于左下方,敌方宠物置于右上方
+  开始后出现一个随机动画选择本回合谁先手。如果是我方出手,通过摄像头地区用户手势选择几号技能,并根据技能列表（skillList）中的颜色(color)和技能形状(shape)使用粒子渲染释放攻击,攻击路径是从我方宠物到敌方宠物,并对敌方宠物造成对应伤害(attack),并实时计算显示；如果是地方宠物，则通过随机选择并渲染释放攻击，对我方宠物造成伤害
+  如果有一方宠物血量归0，则游戏结束，播放对应结算画面
+  技能形状共有（laser光线）（lightWave光波）（bomb炸弹）（cyclone旋风）（knife刀）（gas毒气）这几种形式
+
+step2:
+  Access to script at 'file:///E:/workFile/game/app.js' from origin 'null' has been blocked by CORS policy: Cross origin requests are only supported for protocol schemes: chrome, chrome-extension, chrome-untrusted, data, http, https, isolated-app.
+  index.html:71  GET file:///E:/workFile/game/app.js net::ERR_FAILED
+  控制台出现了这个问题，并且系统卡在系统初始化中界面，帮我修复一下
+
+step3:
+  我是小白，我只会双击打开html文件，帮我修改成能直接打开的形式，且代码功能保持原需求
+
+step4:
+  需要优化一下UI样式:
+  1.背景需要做成流光粒子特效,像是异空间那种.
+  2.我方选择技能的时候,也进行一个卡片展示,卡片上展示技能名称和技能伤害,选中的时候做一个动效,要好看一点
+
+step5:
+  现在整体功能没有问题了,但是还有两点需要修改:
+  1.攻击技能特效太丑了,需要使用粒子特效进行实现,并且需要炫酷一点
+  2.宠物头像我想替换成本文件夹下的图片,但是我现在修改路径window环境下会使用file:D:/code/a.png,导致图片无法正确渲染,这部分逻辑帮我修改一下
+
+step6:
+  现在宠物选择界面已经可以替换头像了,但是对战界面中宠物头像还是不行,帮我把这部分再次优化一下
+
+step7:
+  还是不可以,为什么宠物选择页面可以正常显示,但是对战页面中就显示不了,告诉我这个原因,并进行修复
+
+step8:
+  战斗场景的背景帮我在美化一下,加上粒子组成的流星或者风暴特效,要炫酷一点,别的不需要变动
+
+step9:
+  再帮我修改两点:
+  1.有的时候释放一个技能会造成连续伤害,修改这个问题,每次释放技能只允许造成一次伤害
+  2.最终结算的时候不要显示英文
+  3.摄像头框做成炫酷一点的战斗室风格
+
+
+
