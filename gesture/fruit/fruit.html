@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍉 水果忍者 - Fruit Ninja</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* 开始菜单 */
+        #startMenu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .menu-title {
+            font-size: 4rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 107, 107, 0.5)); }
+            50% { filter: drop-shadow(0 0 40px rgba(72, 219, 251, 0.8)); }
+        }
+
+        .menu-subtitle {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 40px;
+        }
+
+        .menu-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px 40px;
+            margin: 10px;
+            min-width: 350px;
+        }
+
+        .menu-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .color-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .color-btn.selected {
+            border-color: white;
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        .color-btn::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .color-btn.selected::after {
+            opacity: 1;
+        }
+
+        .time-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .time-btn {
+            padding: 15px 25px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .time-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .time-btn.selected {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border-color: transparent;
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        #startBtn {
+            margin-top: 30px;
+            padding: 20px 60px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(238, 90, 36, 0.4);
+        }
+
+        #startBtn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(238, 90, 36, 0.6);
+        }
+
+        /* 游戏容器 */
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* 摄像头预览 */
+        #videoContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            z-index: 100;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        /* 游戏UI */
+        #gameUI {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .ui-box {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #scoreDisplay {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        #scoreDisplay span {
+            color: #feca57;
+        }
+
+        #timerDisplay {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        #timerDisplay span {
+            color: #ff6b6b;
+        }
+
+        #comboDisplay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: bold;
+            color: #feca57;
+            text-shadow: 0 0 30px rgba(254, 202, 87, 0.8);
+            opacity: 0;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* 游戏结束 */
+        #gameOver {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .game-over-title {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+
+        .final-score {
+            font-size: 6rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #feca57, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+        }
+
+        #restartBtn {
+            padding: 20px 50px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(45deg, #48dbfb, #0abde3);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.1);
+        }
+
+        /* 加载提示 */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            z-index: 1001;
+            display: none;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #feca57;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 手势提示 */
+        #handIndicator {
+            position: fixed;
+            bottom: 180px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            z-index: 100;
+            display: none;
+        }
+
+        .hand-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff6b6b;
+        }
+
+        .status-dot.active {
+            background: #2ecc71;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 开始菜单 -->
+    <div id="startMenu">
+        <h1 class="menu-title">🍉 水果忍者 🗡️</h1>
+        <p class="menu-subtitle">使用你的手来切割水果！</p>
+        
+        <div class="menu-section">
+            <h3>🎨 选择刀光颜色</h3>
+            <div class="color-options">
+                <button class="color-btn selected" data-color="#ff6b6b" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24)"></button>
+                <button class="color-btn" data-color="#48dbfb" style="background: linear-gradient(45deg, #48dbfb, #0abde3)"></button>
+                <button class="color-btn" data-color="#feca57" style="background: linear-gradient(45deg, #feca57, #ff9f43)"></button>
+                <button class="color-btn" data-color="#ff9ff3" style="background: linear-gradient(45deg, #ff9ff3, #f368e0)"></button>
+                <button class="color-btn" data-color="#2ecc71" style="background: linear-gradient(45deg, #2ecc71, #27ae60)"></button>
+                <button class="color-btn" data-color="#ffffff" style="background: linear-gradient(45deg, #ffffff, #dfe6e9)"></button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>⏱️ 选择游戏时间</h3>
+            <div class="time-options">
+                <button class="time-btn selected" data-time="30">30秒</button>
+                <button class="time-btn" data-time="45">45秒</button>
+                <button class="time-btn" data-time="60">60秒</button>
+                <button class="time-btn" data-time="90">90秒</button>
+                <button class="time-btn" data-time="120">120秒</button>
+            </div>
+        </div>
+
+        <button id="startBtn">🎮 开始游戏</button>
+    </div>
+
+    <!-- 加载提示 -->
+    <div id="loading">
+        <div class="loader"></div>
+        <p>正在初始化摄像头和AI模型...</p>
+    </div>
+
+    <!-- 游戏容器 -->
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- 摄像头预览 -->
+    <div id="videoContainer">
+        <video id="videoElement" autoplay playsinline></video>
+    </div>
+
+    <!-- 手势状态 -->
+    <div id="handIndicator">
+        <div class="hand-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">等待检测手势...</span>
+        </div>
+    </div>
+
+    <!-- 游戏UI -->
+    <div id="gameUI">
+        <div class="ui-box" id="scoreDisplay">
+            🍎 分数: <span id="score">0</span>
+        </div>
+        <div class="ui-box" id="timerDisplay">
+            ⏱️ 时间: <span id="timer">60</span>
+        </div>
+    </div>
+
+    <!-- 连击显示 -->
+    <div id="comboDisplay"></div>
+
+    <!-- 游戏结束 -->
+    <div id="gameOver">
+        <h1 class="game-over-title">游戏结束!</h1>
+        <div class="final-score" id="finalScore">0</div>
+        <p style="margin-bottom: 30px; font-size: 1.2rem;">你的最终得分</p>
+        <button id="restartBtn">🔄 再来一局</button>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+
+    <script>
+        // ==================== 游戏配置 ====================
+        const CONFIG = {
+            bladeColor: '#ff6b6b',
+            gameTime: 60,
+            fruitSpawnRate: 1500,
+            gravity: -15,
+            fruitRadius: 40,
+            bladeTrailLength: 20,
+            particleCount: 80
+        };
+
+        // ==================== 水果类型定义 ====================
+        const FRUIT_TYPES = [
+            { 
+                name: 'apple', 
+                emoji: '🍎',
+                colors: [0xff6b6b, 0xee5a24, 0xc0392b],
+                size: 1.0
+            },
+            { 
+                name: 'orange', 
+                emoji: '🍊',
+                colors: [0xffa502, 0xff7f50, 0xe67e22],
+                size: 0.9
+            },
+            { 
+                name: 'watermelon', 
+                emoji: '🍉',
+                colors: [0x2ecc71, 0xff6b6b, 0x27ae60],
+                size: 1.3
+            },
+            { 
+                name: 'grape', 
+                emoji: '🍇',
+                colors: [0x9b59b6, 0x8e44ad, 0x6c3483],
+                size: 0.8
+            },
+            { 
+                name: 'lemon', 
+                emoji: '🍋',
+                colors: [0xf1c40f, 0xf39c12, 0xd4ac0d],
+                size: 0.85
+            },
+            { 
+                name: 'cherry', 
+                emoji: '🍒',
+                colors: [0xe74c3c, 0xc0392b, 0x922b21],
+                size: 0.7
+            },
+            { 
+                name: 'peach', 
+                emoji: '🍑',
+                colors: [0xffb8b8, 0xffa07a, 0xff7f50],
+                size: 0.95
+            }
+        ];
+
+        // ==================== 全局变量 ====================
+        let scene, camera, renderer;
+        let fruits = [];
+        let slicedFruits = [];
+        let particles = [];
+        let bladeTrail = [];
+        let bladeMesh;
+        let bladeGeometry, bladeMaterial;
+        
+        let score = 0;
+        let timeLeft = CONFIG.gameTime;
+        let gameActive = false;
+        let gameInterval;
+        let spawnInterval;
+        
+        let hands;
+        let handDetected = false;
+        let handPosition = { x: 0.5, y: 0.5 };
+        let lastHandPosition = { x: 0.5, y: 0.5 };
+        
+        let comboCount = 0;
+        let lastSliceTime = 0;
+        
+        // ==================== DOM元素 ====================
+        const startMenu = document.getElementById('startMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        const gameUI = document.getElementById('gameUI');
+        const gameOver = document.getElementById('gameOver');
+        const loading = document.getElementById('loading');
+        const videoElement = document.getElementById('videoElement');
+        const videoContainer = document.getElementById('videoContainer');
+        const handIndicator = document.getElementById('handIndicator');
+        const canvas = document.getElementById('gameCanvas');
+        
+        // ==================== 初始化Three.js ====================
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(
+                75, 
+                window.innerWidth / window.innerHeight, 
+                0.1, 
+                1000
+            );
+            camera.position.z = 500;
+            
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true, 
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x000000, 0);
+            
+            // 添加环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            // 添加点光源
+            const pointLight = new THREE.PointLight(0xffffff, 1);
+            pointLight.position.set(0, 200, 300);
+            scene.add(pointLight);
+            
+            // 初始化刀光
+            initBlade();
+            
+            // 添加背景粒子
+            createBackgroundParticles();
+            
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // ==================== 背景粒子 ====================
+        function createBackgroundParticles() {
+            const geometry = new THREE.BufferGeometry();
+            const count = 200;
+            const positions = new Float32Array(count * 3);
+            
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 1500;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 500;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 2,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            const bgParticles = new THREE.Points(geometry, material);
+            bgParticles.name = 'backgroundParticles';
+            scene.add(bgParticles);
+        }
+
+        // ==================== 刀光系统 ====================
+        function initBlade() {
+            const maxPoints = CONFIG.bladeTrailLength;
+            
+            bladeGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(maxPoints * 3);
+            const colors = new Float32Array(maxPoints * 3);
+            
+            bladeGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            bladeGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            bladeMaterial = new THREE.LineBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                linewidth: 3,
+                blending: THREE.AdditiveBlending
+            });
+            
+            bladeMesh = new THREE.Line(bladeGeometry, bladeMaterial);
+            scene.add(bladeMesh);
+        }
+        
+        function updateBlade() {
+            if (!gameActive) return;
+            
+            // 转换手的位置到3D空间
+            const x = (handPosition.x - 0.5) * 800;
+            const y = (0.5 - handPosition.y) * 500;
+            
+            // 添加新位置到轨迹
+            bladeTrail.unshift({ x, y, z: 0 });
+            
+            // 限制轨迹长度
+            if (bladeTrail.length > CONFIG.bladeTrailLength) {
+                bladeTrail.pop();
+            }
+            
+            // 更新几何体
+            const positions = bladeMesh.geometry.attributes.position.array;
+            const colors = bladeMesh.geometry.attributes.color.array;
+            
+            // 解析刀光颜色
+            const bladeColorHex = CONFIG.bladeColor.replace('#', '');
+            const r = parseInt(bladeColorHex.substr(0, 2), 16) / 255;
+            const g = parseInt(bladeColorHex.substr(2, 2), 16) / 255;
+            const b = parseInt(bladeColorHex.substr(4, 2), 16) / 255;
+            
+            for (let i = 0; i < CONFIG.bladeTrailLength; i++) {
+                if (i < bladeTrail.length) {
+                    const point = bladeTrail[i];
+                    positions[i * 3] = point.x;
+                    positions[i * 3 + 1] = point.y;
+                    positions[i * 3 + 2] = point.z;
+                    
+                    // 渐变透明度
+                    const alpha = 1 - (i / bladeTrail.length);
+                    colors[i * 3] = r * alpha;
+                    colors[i * 3 + 1] = g * alpha;
+                    colors[i * 3 + 2] = b * alpha;
+                } else {
+                    positions[i * 3] = 0;
+                    positions[i * 3 + 1] = 0;
+                    positions[i * 3 + 2] = 0;
+                    colors[i * 3] = 0;
+                    colors[i * 3 + 1] = 0;
+                    colors[i * 3 + 2] = 0;
+                }
+            }
+            
+            bladeMesh.geometry.attributes.position.needsUpdate = true;
+            bladeMesh.geometry.attributes.color.needsUpdate = true;
+            
+            // 创建刀光粒子效果
+            if (bladeTrail.length > 2 && Math.random() > 0.7) {
+                createBladeParticle(x, y);
+            }
+        }
+        
+        function createBladeParticle(x, y) {
+            const geometry = new THREE.SphereGeometry(3, 8, 8);
+            const material = new THREE.MeshBasicMaterial({
+                color: CONFIG.bladeColor,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particle = new THREE.Mesh(geometry, material);
+            particle.position.set(x + (Math.random() - 0.5) * 20, y + (Math.random() - 0.5) * 20, 0);
+            particle.userData = {
+                velocity: {
+                    x: (Math.random() - 0.5) * 5,
+                    y: (Math.random() - 0.5) * 5,
+                    z: (Math.random() - 0.5) * 5
+                },
+                life: 1.0
+            };
+            
+            scene.add(particle);
+            particles.push(particle);
+        }
+
+        // ==================== 水果系统 ====================
+        function createFruit() {
+            const type = FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
+            const particleCount = CONFIG.particleCount * type.size;
+            
+            // 创建粒子几何体
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const originalPositions = new Float32Array(particleCount * 3);
+            
+            // 球形分布粒子
+            for (let i = 0; i < particleCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const radius = CONFIG.fruitRadius * type.size * (0.5 + Math.random() * 0.5);
+                
+                const x = radius * Math.sin(phi) * Math.cos(theta);
+                const y = radius * Math.sin(phi) * Math.sin(theta);
+                const z = radius * Math.cos(phi);
+                
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+                
+                originalPositions[i * 3] = x;
+                originalPositions[i * 3 + 1] = y;
+                originalPositions[i * 3 + 2] = z;
+                
+                // 随机选择水果颜色
+                const color = new THREE.Color(type.colors[Math.floor(Math.random() * type.colors.length)]);
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 5,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const fruit = new THREE.Points(geometry, material);
+            
+            // 初始位置在屏幕下方
+            const startX = (Math.random() - 0.5) * 600;
+            fruit.position.set(startX, -400, 0);
+            
+            // 抛物线速度
+            const targetX = (Math.random() - 0.5) * 400;
+            fruit.userData = {
+                type: type,
+                velocity: {
+                    x: (targetX - startX) * 0.02,
+                    y: 15 + Math.random() * 5,
+                    z: 0
+                },
+                rotation: {
+                    x: (Math.random() - 0.5) * 0.05,
+                    y: (Math.random() - 0.5) * 0.05,
+                    z: (Math.random() - 0.5) * 0.05
+                },
+                originalPositions: originalPositions,
+                sliced: false,
+                radius: CONFIG.fruitRadius * type.size
+            };
+            
+            scene.add(fruit);
+            fruits.push(fruit);
+            
+            return fruit;
+        }
+        
+        function updateFruits(delta) {
+            const toRemove = [];
+            
+            fruits.forEach((fruit, index) => {
+                if (fruit.userData.sliced) return;
+                
+                // 应用重力
+                fruit.userData.velocity.y += CONFIG.gravity * delta;
+                
+                // 更新位置
+                fruit.position.x += fruit.userData.velocity.x;
+                fruit.position.y += fruit.userData.velocity.y;
+                fruit.position.z += fruit.userData.velocity.z;
+                
+                // 旋转
+                fruit.rotation.x += fruit.userData.rotation.x;
+                fruit.rotation.y += fruit.userData.rotation.y;
+                fruit.rotation.z += fruit.userData.rotation.z;
+                
+                // 检测是否出界
+                if (fruit.position.y < -500) {
+                    toRemove.push(index);
+                }
+                
+                // 碰撞检测
+                checkCollision(fruit, index);
+            });
+            
+            // 移除出界水果
+            toRemove.reverse().forEach(index => {
+                const fruit = fruits[index];
+                scene.remove(fruit);
+                fruit.geometry.dispose();
+                fruit.material.dispose();
+                fruits.splice(index, 1);
+            });
+        }
+        
+        function checkCollision(fruit, index) {
+            if (bladeTrail.length < 2 || fruit.userData.sliced) return;
+            
+            // 获取刀光位置
+            const bladePos = bladeTrail[0];
+            
+            // 计算距离
+            const dx = bladePos.x - fruit.position.x;
+            const dy = bladePos.y - fruit.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 计算刀光速度
+            const bladeSpeed = Math.sqrt(
+                Math.pow(handPosition.x - lastHandPosition.x, 2) +
+                Math.pow(handPosition.y - lastHandPosition.y, 2)
+            );
+            
+            if (distance < fruit.userData.radius && bladeSpeed > 0.01) {
+                sliceFruit(fruit, index);
+            }
+        }
+        
+        function sliceFruit(fruit, index) {
+            fruit.userData.sliced = true;
+            
+            // 增加分数
+            score++;
+            document.getElementById('score').textContent = score;
+            
+            // 连击检测
+            const now = Date.now();
+            if (now - lastSliceTime < 500) {
+                comboCount++;
+                showCombo(comboCount);
+            } else {
+                comboCount = 1;
+            }
+            lastSliceTime = now;
+            
+            // 创建切割效果
+            createSliceEffect(fruit);
+            
+            // 播放切割音效
+            playSliceSound();
+            
+            // 从水果列表移除
+            fruits.splice(index, 1);
+        }
+        
+        function createSliceEffect(fruit) {
+            const positions = fruit.geometry.attributes.position.array;
+            const colors = fruit.geometry.attributes.color.array;
+            
+            // 计算切割方向
+            const sliceAngle = Math.atan2(
+                handPosition.y - lastHandPosition.y,
+                handPosition.x - lastHandPosition.x
+            );
+            
+            // 创建两半水果
+            for (let half = 0; half < 2; half++) {
+                const halfPositions = [];
+                const halfColors = [];
+                
+                for (let i = 0; i < positions.length / 3; i++) {
+                    const x = positions[i * 3];
+                    const y = positions[i * 3 + 1];
+                    
+                    // 根据切割方向分割粒子
+                    const rotatedX = x * Math.cos(-sliceAngle) - y * Math.sin(-sliceAngle);
+                    
+                    if ((half === 0 && rotatedX < 0) || (half === 1 && rotatedX >= 0)) {
+                        halfPositions.push(x, positions[i * 3 + 1], positions[i * 3 + 2]);
+                        halfColors.push(colors[i * 3], colors[i * 3 + 1], colors[i * 3 + 2]);
+                    }
+                }
+                
+                if (halfPositions.length > 0) {
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(halfPositions, 3));
+                    geometry.setAttribute('color', new THREE.Float32BufferAttribute(halfColors, 3));
+                    
+                    const material = new THREE.PointsMaterial({
+                        size: 5,
+                        vertexColors: true,
+                        transparent: true,
+                        opacity: 0.9,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const halfFruit = new THREE.Points(geometry, material);
+                    halfFruit.position.copy(fruit.position);
+                    halfFruit.rotation.copy(fruit.rotation);
+                    
+                    // 分离速度
+                    const separationDir = half === 0 ? -1 : 1;
+                    halfFruit.userData = {
+                        velocity: {
+                            x: fruit.userData.velocity.x + Math.cos(sliceAngle + Math.PI/2) * 5 * separationDir,
+                            y: fruit.userData.velocity.y + Math.sin(sliceAngle + Math.PI/2) * 5 * separationDir,
+                            z: (Math.random() - 0.5) * 5
+                        },
+                        rotation: {
+                            x: (Math.random() - 0.5) * 0.2,
+                            y: (Math.random() - 0.5) * 0.2,
+                            z: (Math.random() - 0.5) * 0.2
+                        },
+                        life: 1.0
+                    };
+                    
+                    scene.add(halfFruit);
+                    slicedFruits.push(halfFruit);
+                }
+            }
+            
+            // 创建爆炸粒子
+            createExplosionParticles(fruit.position, fruit.userData.type.colors[0]);
+            
+            // 移除原水果
+            scene.remove(fruit);
+            fruit.geometry.dispose();
+            fruit.material.dispose();
+        }
+        
+        function createExplosionParticles(position, color) {
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const geometry = new THREE.SphereGeometry(3, 6, 6);
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const particle = new THREE.Mesh(geometry, material);
+                particle.position.copy(position);
+                
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 5 + Math.random() * 10;
+                
+                particle.userData = {
+                    velocity: {
+                        x: Math.cos(angle) * speed,
+                        y: Math.sin(angle) * speed + 5,
+                        z: (Math.random() - 0.5) * speed
+                    },
+                    life: 1.0
+                };
+                
+                scene.add(particle);
+                particles.push(particle);
+            }
+        }
+        
+        function updateSlicedFruits(delta) {
+            const toRemove = [];
+            
+            slicedFruits.forEach((fruit, index) => {
+                // 应用重力
+                fruit.userData.velocity.y += CONFIG.gravity * delta;
+                
+                // 更新位置
+                fruit.position.x += fruit.userData.velocity.x;
+                fruit.position.y += fruit.userData.velocity.y;
+                fruit.position.z += fruit.userData.velocity.z;
+                
+                // 旋转
+                fruit.rotation.x += fruit.userData.rotation.x;
+                fruit.rotation.y += fruit.userData.rotation.y;
+                fruit.rotation.z += fruit.userData.rotation.z;
+                
+                // 淡出
+                fruit.userData.life -= delta * 0.5;
+                fruit.material.opacity = fruit.userData.life;
+                
+                if (fruit.userData.life <= 0 || fruit.position.y < -600) {
+                    toRemove.push(index);
+                }
+            });
+            
+            toRemove.reverse().forEach(index => {
+                const fruit = slicedFruits[index];
+                scene.remove(fruit);
+                fruit.geometry.dispose();
+                fruit.material.dispose();
+                slicedFruits.splice(index, 1);
+            });
+        }
+        
+        function updateParticles(delta) {
+            const toRemove = [];
+            
+            particles.forEach((particle, index) => {
+                // 更新位置
+                particle.position.x += particle.userData.velocity.x;
+                particle.position.y += particle.userData.velocity.y;
+                particle.position.z += particle.userData.velocity.z;
+                
+                // 应用重力
+                particle.userData.velocity.y -= 0.5;
+                
+                // 淡出
+                particle.userData.life -= delta * 2;
+                particle.material.opacity = particle.userData.life;
+                
+                if (particle.userData.life <= 0) {
+                    toRemove.push(index);
+                }
+            });
+            
+            toRemove.reverse().forEach(index => {
+                const particle = particles[index];
+                scene.remove(particle);
+                particle.geometry.dispose();
+                particle.material.dispose();
+                particles.splice(index, 1);
+            });
+        }
+        
+        function showCombo(count) {
+            if (count < 2) return;
+            
+            const comboDisplay = document.getElementById('comboDisplay');
+            comboDisplay.textContent = `${count}连击!`;
+            comboDisplay.style.opacity = '1';
+            comboDisplay.style.transform = 'translate(-50%, -50%) scale(1.2)';
+            
+            setTimeout(() => {
+                comboDisplay.style.opacity = '0';
+                comboDisplay.style.transform = 'translate(-50%, -50%) scale(0.8)';
+            }, 500);
+            
+            // 额外分数
+            score += count - 1;
+            document.getElementById('score').textContent = score;
+        }
+
+        // ==================== 音效 ====================
+        function playSliceSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        // ==================== MediaPipe初始化 ====================
+        async function initMediaPipe() {
+            try {
+                // 初始化Hands
+                hands = new Hands({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
+                    }
+                });
+                
+                hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.7,
+                    minTrackingConfidence: 0.5
+                });
+                
+                hands.onResults(onHandResults);
+                
+                // 获取摄像头
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: 640, 
+                        height: 480,
+                        facingMode: 'user'
+                    }
+                });
+                
+                videoElement.srcObject = stream;
+                
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        videoElement.play();
+                        resolve();
+                    };
+                });
+                
+                // 开始摄像头循环
+                const camera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await hands.send({ image: videoElement });
+                    },
+                    width: 640,
+                    height: 480
+                });
+                
+                await camera.start();
+                
+                return true;
+            } catch (error) {
+                console.error('MediaPipe初始化失败:', error);
+                alert('摄像头初始化失败！请确保允许摄像头访问。');
+                return false;
+            }
+        }
+        
+        function onHandResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                document.getElementById('statusDot').classList.add('active');
+                document.getElementById('statusText').textContent = '手势已检测';
+                
+                // 获取食指指尖位置 (索引8)
+                const indexTip = results.multiHandLandmarks[0][8];
+                
+                // 保存上一帧位置
+                lastHandPosition.x = handPosition.x;
+                lastHandPosition.y = handPosition.y;
+                
+                // 更新当前位置（镜像翻转x坐标）
+                handPosition.x = 1 - indexTip.x;
+                handPosition.y = indexTip.y;
+            } else {
+                handDetected = false;
+                document.getElementById('statusDot').classList.remove('active');
+                document.getElementById('statusText').textContent = '等待检测手势...';
+            }
+        }
+
+        // ==================== 游戏控制 ====================
+        function startGame() {
+            // 重置游戏状态
+            score = 0;
+            timeLeft = CONFIG.gameTime;
+            gameActive = true;
+            comboCount = 0;
+            bladeTrail = [];
+            
+            // 清理之前的水果
+            fruits.forEach(fruit => {
+                scene.remove(fruit);
+                fruit.geometry.dispose();
+                fruit.material.dispose();
+            });
+            fruits = [];
+            
+            slicedFruits.forEach(fruit => {
+                scene.remove(fruit);
+                fruit.geometry.dispose();
+                fruit.material.dispose();
+            });
+            slicedFruits = [];
+            
+            particles.forEach(particle => {
+                scene.remove(particle);
+                particle.geometry.dispose();
+                particle.material.dispose();
+            });
+            particles = [];
+            
+            // 更新UI
+            document.getElementById('score').textContent = '0';
+            document.getElementById('timer').textContent = timeLeft;
+            
+            // 隐藏菜单，显示游戏
+            startMenu.style.display = 'none';
+            gameOver.style.display = 'none';
+            gameContainer.style.display = 'block';
+            gameUI.style.display = 'flex';
+            handIndicator.style.display = 'block';
+            
+            // 开始倒计时
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+            
+            // 开始生成水果
+            spawnInterval = setInterval(() => {
+                if (gameActive) {
+                    // 随机生成1-3个水果
+                    const count = Math.floor(Math.random() * 3) + 1;
+                    for (let i = 0; i < count; i++) {
+                        setTimeout(() => createFruit(), i * 200);
+                    }
+                }
+            }, CONFIG.fruitSpawnRate);
+            
+            // 立即生成几个水果
+            createFruit();
+            setTimeout(() => createFruit(), 500);
+        }
+        
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            clearInterval(spawnInterval);
+            
+            // 显示结束画面
+            document.getElementById('finalScore').textContent = score;
+            gameOver.style.display = 'flex';
+            gameUI.style.display = 'none';
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==================== 动画循环 ====================
+        let lastTime = 0;
+        
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+            
+            const delta = Math.min((currentTime - lastTime) / 1000, 0.1);
+            lastTime = currentTime;
+            
+            if (gameActive) {
+                updateBlade();
+                updateFruits(delta);
+                updateSlicedFruits(delta);
+                updateParticles(delta);
+            }
+            
+            // 旋转背景粒子
+            const bgParticles = scene.getObjectByName('backgroundParticles');
+            if (bgParticles) {
+                bgParticles.rotation.y += 0.0005;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // ==================== 事件监听 ====================
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                CONFIG.bladeColor = btn.dataset.color;
+            });
+        });
+        
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                CONFIG.gameTime = parseInt(btn.dataset.time);
+            });
+        });
+        
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            loading.style.display = 'block';
+            startMenu.style.display = 'none';
+            
+            const success = await initMediaPipe();
+            
+            loading.style.display = 'none';
+            
+            if (success) {
+                initThreeJS();
+                animate(0);
+                startGame();
+            } else {
+                startMenu.style.display = 'flex';
+            }
+        });
+        
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            startGame();
+        });
+
+        // ==================== 鼠标fallback（调试用） ====================
+        let useMouseFallback = false;
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'm' || e.key === 'M') {
+                useMouseFallback = !useMouseFallback;
+                console.log('鼠标模式:', useMouseFallback ? '开启' : '关闭');
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (useMouseFallback && gameActive) {
+                lastHandPosition.x = handPosition.x;
+                lastHandPosition.y = handPosition.y;
+                
+                handPosition.x = e.clientX / window.innerWidth;
+                handPosition.y = e.clientY / window.innerHeight;
+                handDetected = true;
+            }
+        });
+    </script>
+</body>
+</html>
